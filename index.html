@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>L5 Messenger — Чат без сервера</title>
+    <title>L5 Messenger — P2P Чат без сервера</title>
     <style>
         * {
             margin: 0;
@@ -108,15 +108,38 @@
             border: 1px solid #3b4a6b;
             color: #cbd5e1;
         }
-        .room-code {
-            font-size: 20px;
-            font-weight: 700;
+        .btn-outline {
+            background: transparent;
+            border: 1px solid #2b6ef0;
             color: #2b6ef0;
-            letter-spacing: 2px;
+        }
+        .status-box {
+            background: #1e293b;
+            border-radius: 16px;
+            padding: 12px;
+            margin-bottom: 16px;
             text-align: center;
         }
+        .status-connected {
+            color: #22c55e;
+        }
+        .status-waiting {
+            color: #f59e0b;
+        }
+        .blob-area {
+            background: #0f111a;
+            border-radius: 16px;
+            padding: 12px;
+            margin: 12px 0;
+            font-family: monospace;
+            font-size: 11px;
+            word-break: break-all;
+            max-height: 150px;
+            overflow-y: auto;
+            color: #94a3b8;
+        }
         .messages-area {
-            max-height: 450px;
+            max-height: 380px;
             overflow-y: auto;
             margin-bottom: 16px;
             display: flex;
@@ -186,22 +209,22 @@
             font-size: 20px;
             cursor: pointer;
         }
-        .online-status {
-            font-size: 12px;
-            color: #22c55e;
-            text-align: center;
-            margin-top: 8px;
-        }
         .small-text {
             font-size: 12px;
             color: #6c7283;
             text-align: center;
         }
-        .info-box {
-            background: #1e293b;
-            border-radius: 16px;
-            padding: 12px;
-            margin-top: 16px;
+        .flex-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .flex-row .btn {
+            flex: 1;
+        }
+        hr {
+            border-color: #2d3748;
+            margin: 16px 0;
         }
     </style>
 </head>
@@ -209,240 +232,158 @@
 <div class="app">
     <div class="header">
         <h1>✨ L5 Messenger</h1>
-        <p>Без сервера — работает сразу</p>
+        <p>P2P — напрямую с другом, без сервера</p>
     </div>
     <div class="content">
-        <!-- Экран входа -->
-        <div id="joinScreen" class="screen active">
+        <!-- Экран выбора роли -->
+        <div id="roleScreen" class="screen active">
             <div class="card">
-                <h2>Чат-комната</h2>
-                <div class="badge">Придумайте общий код</div>
-                <input type="text" id="roomInput" class="input-field" placeholder="Код комнаты (например: кот123)">
-                <input type="text" id="userNameInput" class="input-field" placeholder="Ваше имя">
-                <button id="joinBtn" class="btn">🔓 Войти в чат</button>
+                <h2>Кто вы?</h2>
+                <div class="badge">Выберите роль</div>
+                <button id="hostBtn" class="btn" style="margin-bottom:12px;">👑 Создать чат (Хост)</button>
+                <button id="peerBtn" class="btn btn-secondary">🤝 Подключиться к чату</button>
             </div>
-            <div class="info-box">
-                <p class="small-text">📌 Как общаться с другом:</p>
-                <p class="small-text" style="margin-top:8px;">
-                    1. Перешлите этот файл другу<br>
-                    2. Введите ОДИНАКОВЫЙ код комнаты<br>
-                    3. Общайтесь!<br><br>
-                    ⚠️ Сообщения сохраняются в браузере<br>
-                    Чтобы общаться — будьте онлайн одновременно
-                </p>
+            <div class="small-text">
+                💡 Хост создаёт приглашение → копирует → отправляет другу<br>
+                🤝 Друг вставляет приглашение и подключается
             </div>
         </div>
 
-        <!-- Экран чата -->
-        <div id="chatScreen" class="screen">
-            <div class="card" style="padding:16px;">
-                <div class="room-code" id="roomCodeDisplay">---</div>
-                <div class="small-text" style="margin-top:8px;" id="roomHint"></div>
+        <!-- Экран для ХОСТА -->
+        <div id="hostScreen" class="screen">
+            <div class="card">
+                <h2>👑 Вы — Хост</h2>
+                <div class="badge">Шаг 1</div>
+                <input type="text" id="hostName" class="input-field" placeholder="Ваше имя" value="Хост">
+                <button id="createOfferBtn" class="btn">📡 Создать приглашение</button>
             </div>
-            <div class="messages-area" id="messagesArea">
-                <div class="small-text" style="padding:20px;">💬 Введите сообщение...</div>
+            <div id="hostOfferArea" style="display:none;">
+                <div class="card">
+                    <div class="badge">Шаг 2</div>
+                    <p class="small-text" style="margin-bottom:8px;">Скопируйте этот код и отправьте другу:</p>
+                    <div id="hostOfferBlob" class="blob-area"></div>
+                    <button id="copyOfferBtn" class="btn btn-outline">📋 Копировать</button>
+                    
+                    <hr>
+                    
+                    <div class="badge">Шаг 3</div>
+                    <p class="small-text" style="margin-bottom:8px;">Когда друг ответит, вставьте его код сюда:</p>
+                    <textarea id="hostAnswerInput" rows="3" class="input-field" placeholder="Вставьте ответ друга..."></textarea>
+                    <button id="submitAnswerBtn" class="btn">🔗 Подключиться</button>
+                </div>
             </div>
-            <div class="input-row">
-                <input type="text" id="messageInput" placeholder="Написать сообщение..." autocomplete="off">
-                <button id="sendBtn" class="send-btn">➤</button>
+            <div id="hostChatArea" style="display:none;">
+                <div class="status-box status-connected" id="hostStatus">🟢 Подключено!</div>
+                <div class="messages-area" id="hostMessages"></div>
+                <div class="input-row">
+                    <input type="text" id="hostMessageInput" placeholder="Сообщение...">
+                    <button id="hostSendBtn" class="send-btn">➤</button>
+                </div>
+                <button id="hostDisconnectBtn" class="btn btn-secondary" style="margin-top:12px;">🔌 Отключиться</button>
             </div>
-            <div class="online-status" id="onlineStatus">🟢 Вы в чате</div>
-            <button id="leaveBtn" class="btn btn-secondary" style="margin-top:12px;">🚪 Выйти</button>
+            <button id="hostBackBtn" class="btn btn-secondary" style="margin-top:12px;">← Назад</button>
+        </div>
+
+        <!-- Экран для PEER (подключающегося) -->
+        <div id="peerScreen" class="screen">
+            <div class="card">
+                <h2>🤝 Подключение</h2>
+                <div class="badge">Шаг 1</div>
+                <input type="text" id="peerName" class="input-field" placeholder="Ваше имя" value="Друг">
+                <p class="small-text" style="margin-bottom:8px;">Вставьте приглашение от хоста:</p>
+                <textarea id="peerOfferInput" rows="3" class="input-field" placeholder="Вставьте код приглашения..."></textarea>
+                <button id="connectBtn" class="btn">🔗 Подключиться</button>
+            </div>
+            <div id="peerAnswerArea" style="display:none;">
+                <div class="card">
+                    <div class="badge">Шаг 2</div>
+                    <p class="small-text" style="margin-bottom:8px;">Отправьте этот код хосту:</p>
+                    <div id="peerAnswerBlob" class="blob-area"></div>
+                    <button id="copyAnswerBtn" class="btn btn-outline">📋 Копировать</button>
+                </div>
+            </div>
+            <div id="peerChatArea" style="display:none;">
+                <div class="status-box status-connected" id="peerStatus">🟢 Подключено!</div>
+                <div class="messages-area" id="peerMessages"></div>
+                <div class="input-row">
+                    <input type="text" id="peerMessageInput" placeholder="Сообщение...">
+                    <button id="peerSendBtn" class="send-btn">➤</button>
+                </div>
+                <button id="peerDisconnectBtn" class="btn btn-secondary" style="margin-top:12px;">🔌 Отключиться</button>
+            </div>
+            <button id="peerBackBtn" class="btn btn-secondary" style="margin-top:12px;">← Назад</button>
         </div>
     </div>
 </div>
 
 <script>
-    // ============================================
-    // ПРОСТОЙ ЧАТ БЕЗ СЕРВЕРА
-    // Работает через localStorage и синхронизацию между вкладками
-    // ============================================
+    // ============================================================
+    // L5 MESSENGER — P2P ЧЕРЕЗ WEBRTC
+    // БЕЗ СЕРВЕРОВ, БЕЗ ХРАНИЛИЩ, ТОЛЬКО ПРЯМОЕ СОЕДИНЕНИЕ
+    // ============================================================
     
-    let currentRoom = null;
-    let currentUser = null;
-    let checkInterval = null;
+    // STUN серверы для обхода NAT (бесплатные публичные) [citation:8][citation:9]
+    const iceServers = [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'stun:stun2.l.google.com:19302' }
+    ];
+    
+    let peerConnection = null;
+    let dataChannel = null;
+    let currentRole = null; // 'host' or 'peer'
+    let currentName = '';
+    let messageCallback = null;
     
     // DOM элементы
-    const joinScreen = document.getElementById('joinScreen');
-    const chatScreen = document.getElementById('chatScreen');
-    const roomInput = document.getElementById('roomInput');
-    const userNameInput = document.getElementById('userNameInput');
-    const joinBtn = document.getElementById('joinBtn');
-    const roomCodeDisplay = document.getElementById('roomCodeDisplay');
-    const roomHint = document.getElementById('roomHint');
-    const messagesArea = document.getElementById('messagesArea');
-    const messageInput = document.getElementById('messageInput');
-    const sendBtn = document.getElementById('sendBtn');
-    const leaveBtn = document.getElementById('leaveBtn');
-    const onlineStatus = document.getElementById('onlineStatus');
+    const roleScreen = document.getElementById('roleScreen');
+    const hostScreen = document.getElementById('hostScreen');
+    const peerScreen = document.getElementById('peerScreen');
     
-    // Получить сообщения из хранилища
-    function getMessages() {
-        if (!currentRoom) return [];
-        const key = `l5_chat_${currentRoom}`;
-        const saved = localStorage.getItem(key);
-        if (saved) {
-            try {
-                return JSON.parse(saved);
-            } catch(e) {
-                return [];
-            }
-        }
-        return [];
-    }
+    // Хост элементы
+    const hostName = document.getElementById('hostName');
+    const createOfferBtn = document.getElementById('createOfferBtn');
+    const hostOfferArea = document.getElementById('hostOfferArea');
+    const hostOfferBlob = document.getElementById('hostOfferBlob');
+    const copyOfferBtn = document.getElementById('copyOfferBtn');
+    const hostAnswerInput = document.getElementById('hostAnswerInput');
+    const submitAnswerBtn = document.getElementById('submitAnswerBtn');
+    const hostChatArea = document.getElementById('hostChatArea');
+    const hostMessages = document.getElementById('hostMessages');
+    const hostMessageInput = document.getElementById('hostMessageInput');
+    const hostSendBtn = document.getElementById('hostSendBtn');
+    const hostDisconnectBtn = document.getElementById('hostDisconnectBtn');
+    const hostBackBtn = document.getElementById('hostBackBtn');
+    const hostStatus = document.getElementById('hostStatus');
     
-    // Сохранить сообщения
-    function saveMessages(messages) {
-        if (!currentRoom) return;
-        const key = `l5_chat_${currentRoom}`;
-        localStorage.setItem(key, JSON.stringify(messages));
-    }
+    // Peer элементы
+    const peerName = document.getElementById('peerName');
+    const peerOfferInput = document.getElementById('peerOfferInput');
+    const connectBtn = document.getElementById('connectBtn');
+    const peerAnswerArea = document.getElementById('peerAnswerArea');
+    const peerAnswerBlob = document.getElementById('peerAnswerBlob');
+    const copyAnswerBtn = document.getElementById('copyAnswerBtn');
+    const peerChatArea = document.getElementById('peerChatArea');
+    const peerMessages = document.getElementById('peerMessages');
+    const peerMessageInput = document.getElementById('peerMessageInput');
+    const peerSendBtn = document.getElementById('peerSendBtn');
+    const peerDisconnectBtn = document.getElementById('peerDisconnectBtn');
+    const peerBackBtn = document.getElementById('peerBackBtn');
+    const peerStatus = document.getElementById('peerStatus');
     
-    // Добавить сообщение
-    function addMessage(text, userName, isSent) {
-        const messages = getMessages();
-        messages.push({
-            id: Date.now() + '_' + Math.random(),
-            text: text,
-            userName: userName,
-            timestamp: Date.now(),
-            isSent: isSent
-        });
-        saveMessages(messages);
-        renderMessages();
-        
-        // Отправить сигнал другим вкладкам/окнам
-        broadcastToOtherTabs({ type: 'new_message', room: currentRoom });
-    }
-    
-    // Отправить событие другим вкладкам
-    function broadcastToOtherTabs(data) {
-        try {
-            localStorage.setItem('l5_broadcast', JSON.stringify({ data, time: Date.now() }));
-            setTimeout(() => localStorage.removeItem('l5_broadcast'), 500);
-        } catch(e) {}
-    }
-    
-    // Отобразить сообщения
-    function renderMessages() {
-        const messages = getMessages();
-        
-        if (!messages || messages.length === 0) {
-            messagesArea.innerHTML = '<div class="small-text" style="padding:20px;">💬 Напишите первое сообщение!</div>';
-            return;
-        }
-        
-        messagesArea.innerHTML = messages.map(msg => {
-            const isSent = msg.userName === currentUser;
-            const time = new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            return `
-                <div class="message ${isSent ? 'sent' : 'received'}">
-                    <div>
-                        <div class="message-name">${escapeHtml(msg.userName)}</div>
-                        <div class="bubble">${escapeHtml(msg.text)}</div>
-                        <div class="timestamp">${time}</div>
-                    </div>
-                </div>
-            `;
-        }).join('');
-        
-        messagesArea.scrollTop = messagesArea.scrollHeight;
-    }
-    
-    // Отправить сообщение
-    function sendMessage() {
-        const text = messageInput.value.trim();
-        if (!text) return;
-        
-        addMessage(text, currentUser, true);
-        messageInput.value = '';
-        messageInput.focus();
-    }
-    
-    // Проверить обновления от других устройств
-    function checkForUpdates() {
-        // Просто перерисовываем сообщения
-        renderMessages();
-    }
-    
-    // Войти в комнату
-    function joinRoom() {
-        const room = roomInput.value.trim();
-        const userName = userNameInput.value.trim();
-        
-        if (!room) {
-            alert('Введите код комнаты');
-            return;
-        }
-        if (!userName) {
-            alert('Введите ваше имя');
-            return;
-        }
-        
-        currentRoom = room;
-        currentUser = userName;
-        
-        roomCodeDisplay.innerText = currentRoom;
-        roomHint.innerText = `Вы вошли как ${currentUser}`;
-        onlineStatus.innerText = `🟢 ${currentUser} в чате «${currentRoom}»`;
-        
-        renderMessages();
-        
-        // Добавляем системное сообщение, если комната новая
-        const messages = getMessages();
-        if (messages.length === 0) {
-            setTimeout(() => {
-                addMessage(`${currentUser} присоединился к чату`, '📢 Система', false);
-            }, 500);
-        }
-        
-        // Запускаем проверку обновлений
-        if (checkInterval) clearInterval(checkInterval);
-        checkInterval = setInterval(checkForUpdates, 1000);
-        
-        // Слушаем события от других вкладок
-        window.addEventListener('storage', onStorageEvent);
-        
-        // Переключаем экран
-        joinScreen.classList.remove('active');
-        chatScreen.classList.add('active');
-        messageInput.focus();
-    }
-    
-    // Обработчик событий от других вкладок
-    function onStorageEvent(e) {
-        if (e.key === 'l5_broadcast' && e.newValue) {
-            try {
-                const { data } = JSON.parse(e.newValue);
-                if (data.type === 'new_message' && data.room === currentRoom) {
-                    renderMessages();
-                }
-            } catch(e) {}
-        }
-    }
-    
-    // Выйти из чата
-    function leaveChat() {
-        if (currentRoom && currentUser) {
-            addMessage(`${currentUser} покинул чат`, '📢 Система', false);
-        }
-        
-        if (checkInterval) {
-            clearInterval(checkInterval);
-            checkInterval = null;
-        }
-        
-        window.removeEventListener('storage', onStorageEvent);
-        
-        currentRoom = null;
-        currentUser = null;
-        
-        joinScreen.classList.add('active');
-        chatScreen.classList.remove('active');
-        
-        roomInput.value = '';
-        userNameInput.value = '';
-        messagesArea.innerHTML = '<div class="small-text" style="padding:20px;">💬 Введите сообщение...</div>';
+    // Общие функции
+    function addMessage(container, name, text, isSent) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${isSent ? 'sent' : 'received'}`;
+        const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        messageDiv.innerHTML = `
+            <div>
+                ${!isSent ? `<div class="message-name">${escapeHtml(name)}</div>` : ''}
+                <div class="bubble">${escapeHtml(text)}<div class="timestamp">${time}</div></div>
+            </div>
+        `;
+        container.appendChild(messageDiv);
+        container.scrollTop = container.scrollHeight;
     }
     
     function escapeHtml(str) {
@@ -455,12 +396,261 @@
         });
     }
     
-    // Обработчики
-    joinBtn.onclick = joinRoom;
-    sendBtn.onclick = sendMessage;
-    leaveBtn.onclick = leaveChat;
-    messageInput.onkeypress = (e) => {
-        if (e.key === 'Enter') sendMessage();
+    function closeConnection() {
+        if (dataChannel) {
+            dataChannel.close();
+            dataChannel = null;
+        }
+        if (peerConnection) {
+            peerConnection.close();
+            peerConnection = null;
+        }
+    }
+    
+    // Отправка сообщения через DataChannel
+    function sendMessageViaDC(text) {
+        if (dataChannel && dataChannel.readyState === 'open') {
+            dataChannel.send(JSON.stringify({ type: 'chat', text: text, name: currentName }));
+            return true;
+        }
+        return false;
+    }
+    
+    // ========== ХОСТ: СОЗДАНИЕ ПРИГЛАШЕНИЯ ==========
+    createOfferBtn.onclick = async () => {
+        const name = hostName.value.trim() || 'Хост';
+        currentName = name;
+        currentRole = 'host';
+        
+        closeConnection();
+        
+        peerConnection = new RTCPeerConnection({ iceServers });
+        
+        // Создаём DataChannel
+        dataChannel = peerConnection.createDataChannel('chat');
+        
+        dataChannel.onopen = () => {
+            console.log('✅ DataChannel открыт');
+            hostStatus.innerHTML = '🟢 Подключено! Чат активен';
+            hostStatus.className = 'status-box status-connected';
+        };
+        
+        dataChannel.onclose = () => {
+            console.log('❌ DataChannel закрыт');
+            hostStatus.innerHTML = '🔴 Соединение разорвано';
+            hostStatus.className = 'status-box';
+        };
+        
+        dataChannel.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.type === 'chat') {
+                addMessage(hostMessages, data.name, data.text, false);
+            }
+        };
+        
+        // Создаём offer
+        const offer = await peerConnection.createOffer();
+        await peerConnection.setLocalDescription(offer);
+        
+        // Ждём ICE кандидатов
+        await new Promise(resolve => {
+            if (peerConnection.iceGatheringState === 'complete') resolve();
+            else peerConnection.onicegatheringstatechange = () => {
+                if (peerConnection.iceGatheringState === 'complete') resolve();
+            };
+        });
+        
+        // Упаковываем в строку для передачи
+        const offerData = {
+            type: 'offer',
+            sdp: peerConnection.localDescription.sdp,
+            name: currentName
+        };
+        const offerString = btoa(JSON.stringify(offerData));
+        hostOfferBlob.innerText = offerString;
+        hostOfferArea.style.display = 'block';
+        hostChatArea.style.display = 'none';
+    };
+    
+    // Копировать offer
+    copyOfferBtn.onclick = () => {
+        navigator.clipboard.writeText(hostOfferBlob.innerText);
+        copyOfferBtn.innerText = '✅ Скопировано!';
+        setTimeout(() => copyOfferBtn.innerText = '📋 Копировать', 2000);
+    };
+    
+    // Принять ответ от peer
+    submitAnswerBtn.onclick = async () => {
+        const answerText = hostAnswerInput.value.trim();
+        if (!answerText) {
+            alert('Вставьте ответ от друга');
+            return;
+        }
+        
+        try {
+            const answerData = JSON.parse(atob(answerText));
+            if (answerData.type !== 'answer') {
+                throw new Error('Неверный формат');
+            }
+            
+            await peerConnection.setRemoteDescription(new RTCSessionDescription({
+                type: 'answer',
+                sdp: answerData.sdp
+            }));
+            
+            hostChatArea.style.display = 'block';
+            hostOfferArea.style.display = 'none';
+            hostAnswerInput.value = '';
+            
+            addMessage(hostMessages, '📢 Система', 'Соединение установлено!', false);
+        } catch(e) {
+            alert('Ошибка: неверный код ответа');
+        }
+    };
+    
+    // Отправка сообщения (хост)
+    hostSendBtn.onclick = () => {
+        const text = hostMessageInput.value.trim();
+        if (text && sendMessageViaDC(text)) {
+            addMessage(hostMessages, currentName, text, true);
+            hostMessageInput.value = '';
+        }
+    };
+    hostMessageInput.onkeypress = (e) => { if (e.key === 'Enter') hostSendBtn.click(); };
+    
+    // Отключение (хост)
+    hostDisconnectBtn.onclick = () => {
+        closeConnection();
+        hostChatArea.style.display = 'none';
+        hostOfferArea.style.display = 'none';
+        hostMessages.innerHTML = '';
+        hostStatus.innerHTML = '🟡 Ожидание подключения';
+        hostStatus.className = 'status-box status-waiting';
+    };
+    
+    hostBackBtn.onclick = () => {
+        closeConnection();
+        hostScreen.classList.remove('active');
+        roleScreen.classList.add('active');
+    };
+    
+    // ========== PEER: ПОДКЛЮЧЕНИЕ ==========
+    connectBtn.onclick = async () => {
+        const name = peerName.value.trim() || 'Друг';
+        const offerText = peerOfferInput.value.trim();
+        
+        if (!offerText) {
+            alert('Вставьте приглашение от хоста');
+            return;
+        }
+        
+        currentName = name;
+        currentRole = 'peer';
+        
+        let offerData;
+        try {
+            offerData = JSON.parse(atob(offerText));
+            if (offerData.type !== 'offer') throw new Error();
+        } catch(e) {
+            alert('Неверный формат приглашения');
+            return;
+        }
+        
+        closeConnection();
+        
+        peerConnection = new RTCPeerConnection({ iceServers });
+        
+        // Обработка входящего DataChannel
+        peerConnection.ondatachannel = (event) => {
+            dataChannel = event.channel;
+            
+            dataChannel.onopen = () => {
+                peerStatus.innerHTML = '🟢 Подключено! Чат активен';
+                peerStatus.className = 'status-box status-connected';
+            };
+            
+            dataChannel.onclose = () => {
+                peerStatus.innerHTML = '🔴 Соединение разорвано';
+                peerStatus.className = 'status-box';
+            };
+            
+            dataChannel.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data.type === 'chat') {
+                    addMessage(peerMessages, data.name, data.text, false);
+                }
+            };
+        };
+        
+        // Устанавливаем remote description
+        await peerConnection.setRemoteDescription(new RTCSessionDescription({
+            type: 'offer',
+            sdp: offerData.sdp
+        }));
+        
+        // Создаём answer
+        const answer = await peerConnection.createAnswer();
+        await peerConnection.setLocalDescription(answer);
+        
+        // Ждём ICE кандидатов
+        await new Promise(resolve => {
+            if (peerConnection.iceGatheringState === 'complete') resolve();
+            else peerConnection.onicegatheringstatechange = () => {
+                if (peerConnection.iceGatheringState === 'complete') resolve();
+            };
+        });
+        
+        // Упаковываем answer для отправки
+        const answerData = {
+            type: 'answer',
+            sdp: peerConnection.localDescription.sdp,
+            name: currentName
+        };
+        const answerString = btoa(JSON.stringify(answerData));
+        peerAnswerBlob.innerText = answerString;
+        peerAnswerArea.style.display = 'block';
+        
+        addMessage(peerMessages, '📢 Система', 'Скопируйте и отправьте этот код хосту', false);
+    };
+    
+    copyAnswerBtn.onclick = () => {
+        navigator.clipboard.writeText(peerAnswerBlob.innerText);
+        copyAnswerBtn.innerText = '✅ Скопировано!';
+        setTimeout(() => copyAnswerBtn.innerText = '📋 Копировать', 2000);
+    };
+    
+    // Отправка сообщения (peer)
+    peerSendBtn.onclick = () => {
+        const text = peerMessageInput.value.trim();
+        if (text && sendMessageViaDC(text)) {
+            addMessage(peerMessages, currentName, text, true);
+            peerMessageInput.value = '';
+        }
+    };
+    peerMessageInput.onkeypress = (e) => { if (e.key === 'Enter') peerSendBtn.click(); };
+    
+    peerDisconnectBtn.onclick = () => {
+        closeConnection();
+        peerChatArea.style.display = 'none';
+        peerAnswerArea.style.display = 'none';
+        peerMessages.innerHTML = '';
+    };
+    
+    peerBackBtn.onclick = () => {
+        closeConnection();
+        peerScreen.classList.remove('active');
+        roleScreen.classList.add('active');
+    };
+    
+    // Навигация
+    document.getElementById('hostBtn').onclick = () => {
+        roleScreen.classList.remove('active');
+        hostScreen.classList.add('active');
+    };
+    
+    document.getElementById('peerBtn').onclick = () => {
+        roleScreen.classList.remove('active');
+        peerScreen.classList.add('active');
     };
 </script>
 </body>
